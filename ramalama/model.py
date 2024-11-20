@@ -111,6 +111,9 @@ class Model:
 
         if gpu_type == "ASAHI_VISIBLE_DEVICES":
             return "quay.io/ramalama/asahi:latest"
+        # Locally built but properly tagged image
+        if gpu_type == "CUDA_VISIBLE_DEVICES":
+            return "quay.io/ramalama/cuda:latest"
 
         return args.image
 
@@ -149,10 +152,15 @@ class Model:
 
         if os.path.exists("/dev/kfd"):
             conman_args += ["--device", "/dev/kfd"]
-
+                    
         gpu_type, gpu_num = get_gpu()
         if gpu_type == "HIP_VISIBLE_DEVICES" or gpu_type == "ASAHI_VISIBLE_DEVICES":
             conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+        # Pass the env var and add all devices listed in CDI config, works with /dev/dri
+        if gpu_type == "CUDA_VISIBLE_DEVICES":
+            conman_args += ["-e", f"{gpu_type}={gpu_num}"]
+            conman_args += ["--device", "nvidia.com/gpu=all"]
+            
         return conman_args
 
     def run_container(self, args, shortnames):
@@ -202,9 +210,14 @@ class Model:
             # llama.cpp will default to the Metal backend on macOS, so we don't need
             # any additional arguments.
             pass
-        elif sys.platform == "linux" and (
-            os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("ASAHI_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
-        ):
+        # Env check doesn't seem to pick up container env vars
+        # shell export works:
+        # mrman@butcher:~/Projects/ramalama$ export CUDA_VISIBLE_DEVICES=0
+
+        #elif sys.platform == "linux" and (
+        #    os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("ASAHI_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
+        #):
+        elif sys.platform == "linux":
             gpu_args = ["-ngl", "99"]
         else:
             print("GPU offload was requested but is not available on this system")
@@ -377,6 +390,14 @@ def get_gpu():
             content = file.read()
             if "asahi" in content.lower():
                 return "ASAHI_VISIBLE_DEVICES", 1
+    
+    # CUDA must be installed locally with package that includes nvidia-smi        
+    if os.path.exists('/usr/bin/nvidia-smi'):
+        cmd = '/usr/bin/nvidia-smi --query-gpu compute_cap --format=csv,noheader'
+        val = os.popen(cmd).read()
+        if float(val) > 1.0:
+            # This controls the devices available by index, only 1 GPU on host system
+            return "CUDA_VISIBLE_DEVICES", 0
 
     return None, None
 
