@@ -39,12 +39,12 @@ build() {
     add_build_platform
     "${conman_build[@]}"
     "${conman_show_size[@]}"
-    rm_container_image
+  #  rm_container_image
   elif [ "$2" = "-d" ]; then
     add_build_platform
     echo "${conman_build[@]}"
-  elif [ "$2" = "push" ]; then
-    "${conman[@]}" push "quay.io/ramalama/$image_name"
+  #elif [ "$2" = "push" ]; then
+  #  "${conman[@]}" push "quay.io/ramalama/$image_name"
   elif [ "$2" = "log" ]; then
     "${conman_build[@]}" 2>&1 | tee container_build.log
     "${conman_show_size[@]}"
@@ -52,7 +52,7 @@ build() {
     add_build_platform
     "${conman_build[@]}"
     "${conman_show_size[@]}"
-    rm_container_image
+  #  rm_container_image
   fi
 
   cd - > /dev/null
