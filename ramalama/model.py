@@ -206,18 +206,16 @@ class Model:
 
     def gpu_args(self):
         gpu_args = []
+        gpu_type, _ = get_gpu()
         if sys.platform == "darwin":
             # llama.cpp will default to the Metal backend on macOS, so we don't need
             # any additional arguments.
             pass
         # Env check doesn't seem to pick up container env vars
-        # shell export works:
-        # mrman@butcher:~/Projects/ramalama$ export CUDA_VISIBLE_DEVICES=0
-
         #elif sys.platform == "linux" and (
         #    os.getenv("HIP_VISIBLE_DEVICES") or os.getenv("ASAHI_VISIBLE_DEVICES") or os.getenv("CUDA_VISIBLE_DEVICES")
         #):
-        elif sys.platform == "linux":
+        elif sys.platform == "linux" and gpu_type is not None:
             gpu_args = ["-ngl", "99"]
         else:
             print("GPU offload was requested but is not available on this system")
